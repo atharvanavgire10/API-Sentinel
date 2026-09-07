@@ -1,6 +1,7 @@
-/**
- * Services Index
- * Extension point for business and gateway services in future phases.
- */
-module.exports = {};
+const serviceRegistry = require('./serviceRegistry');
+const proxyService = require('./proxyService');
 
+module.exports = {
+  serviceRegistry,
+  proxyService
+};

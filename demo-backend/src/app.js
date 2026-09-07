@@ -33,7 +33,25 @@ const sampleUsers = [
 
 // Demo Endpoints
 app.get('/api/products', (req, res) => {
+  const { category } = req.query;
+  if (category) {
+    const filtered = sampleProducts.filter(
+      (p) => p.category.toLowerCase() === category.toLowerCase()
+    );
+    return res.status(200).json(filtered);
+  }
   res.status(200).json(sampleProducts);
+});
+
+app.post('/api/products', (req, res) => {
+  const newProduct = {
+    id: `prod-${Date.now()}`,
+    name: req.body?.name || 'New Demo Product',
+    category: req.body?.category || 'General',
+    price: Number(req.body?.price) || 0,
+    stock: Number(req.body?.stock) || 0
+  };
+  res.status(201).json(newProduct);
 });
 
 app.get('/api/orders', (req, res) => {
