@@ -1,0 +1,25 @@
+{
+  "name": "api-sentinel-workspace",
+  "version": "1.0.0",
+  "description": "API Sentinel - Production-inspired API reliability gateway and monitoring platform",
+  "private": true,
+  "scripts": {
+    "dev:server": "npm --prefix server run dev",
+    "dev:demo": "npm --prefix demo-backend run dev",
+    "dev:client": "npm --prefix client run dev",
+    "test:server": "npm --prefix server test",
+    "test:demo": "npm --prefix demo-backend test",
+    "test:client": "npm --prefix client test",
+    "test": "npm run test:server && npm run test:demo && npm run test:client",
+    "build:client": "npm --prefix client run build"
+  },
+  "keywords": [
+    "api-gateway",
+    "reliability",
+    "monitoring",
+    "observability"
+  ],
+  "author": "",
+  "license": "ISC"
+}
+

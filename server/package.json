@@ -1,0 +1,35 @@
+{
+  "name": "api-sentinel-server",
+  "version": "1.0.0",
+  "description": "API Sentinel Core Reliability Gateway Backend",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --runInBand --detectOpenHandles"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
+  },
+  "keywords": [
+    "api-sentinel",
+    "gateway",
+    "backend"
+  ],
+  "author": "",
+  "license": "ISC"
+}
+
