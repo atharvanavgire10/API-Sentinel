@@ -28,6 +28,12 @@ const config = {
     parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) ||
     100,
 
+  healthCheckIntervalMs:
+  parseInt(
+    process.env.HEALTH_CHECK_INTERVAL_MS,
+    10
+  ) || 30000,
+
   services: {
     demo: {
       name: 'demo',

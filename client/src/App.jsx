@@ -11,6 +11,7 @@ import {
 
 import './App.css';
 import useMetrics from './hooks/useMetrics';
+import useHealth from './hooks/useHealth';
 
 function MetricCard({ label, value, suffix = '' }) {
   return (
@@ -34,6 +35,11 @@ function Dashboard() {
     error,
     refresh
   } = useMetrics();
+
+    const {
+    services: healthServices,
+    error: healthError
+  } = useHealth();
 
   const successRate =
     globalMetrics.totalRequests > 0
@@ -143,6 +149,89 @@ function Dashboard() {
           value={globalMetrics.p99Latency.toFixed(2)}
           suffix=" ms"
         />
+      </section>
+
+            <section className="dashboard-section">
+        <div className="section-heading">
+          <div>
+            <h2>Service Health</h2>
+            <p>
+              Live health status of registered upstream services.
+            </p>
+          </div>
+        </div>
+
+        {healthError ? (
+          <div className="empty-state">
+            {healthError}
+          </div>
+        ) : healthServices.length === 0 ? (
+          <div className="empty-state">
+            No health data available yet.
+          </div>
+        ) : (
+          <div className="health-grid">
+            {healthServices.map((service) => (
+              <div
+                className="health-card"
+                key={service.service}
+              >
+                <div className="health-card-header">
+                  <div>
+                    <span className="metric-label">
+                      Service
+                    </span>
+
+                    <strong className="health-service-name">
+                      {service.service}
+                    </strong>
+                  </div>
+
+                  <span
+                    className={`health-status ${
+                      service.status === 'healthy'
+                        ? 'healthy'
+                        : 'unhealthy'
+                    }`}
+                  >
+                    {service.status}
+                  </span>
+                </div>
+
+                <div className="health-details">
+                  <div>
+                    <span>Status Code</span>
+                    <strong>
+                      {service.statusCode ?? 'N/A'}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Latency</span>
+                    <strong>
+                      {service.latency.toFixed(2)} ms
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Last Checked</span>
+                    <strong>
+                      {new Date(
+                        service.lastChecked
+                      ).toLocaleTimeString()}
+                    </strong>
+                  </div>
+                </div>
+
+                {service.error && (
+                  <p className="health-error">
+                    {service.error}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="dashboard-section">
