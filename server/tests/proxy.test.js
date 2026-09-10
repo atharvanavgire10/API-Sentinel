@@ -1,7 +1,10 @@
 const http = require('http');
 const request = require('supertest');
 const app = require('../src/app');
-const { serviceRegistry } = require('../src/services');
+const {
+  serviceRegistry,
+  redisService
+} = require('../src/services');
 const demoApp = require('../../demo-backend/src/app');
 
 const {
@@ -47,6 +50,20 @@ describe('API Sentinel Server - Reverse Proxy Gateway', () => {
     // Keep every test isolated from previous metric data
     resetMetrics();
   });
+
+  beforeEach(async () => {
+  resetMetrics();
+
+  await redisService.connectRedis();
+
+  const redis = redisService.getRedisClient();
+
+  const keys = await redis.keys('rate-limit:*');
+
+  if (keys.length > 0) {
+    await redis.del(keys);
+  }
+});
 
   afterAll(async () => {
     if (demoServer) {
