@@ -158,13 +158,17 @@ class ProxyService {
       );
 
       // 9. Forward status and body
-      const buffer = Buffer.from(
-        await upstreamResponse.arrayBuffer()
-      );
+      res.status(upstreamResponse.status);
 
-      return res
-        .status(upstreamResponse.status)
-        .send(buffer);
+      if (upstreamResponse.body) {
+        const { Readable } = require('stream');
+
+        return Readable
+          .fromWeb(upstreamResponse.body)
+          .pipe(res);
+      }
+
+      return res.end();
 
     } catch (err) {
       clearTimeout(timeoutHandle);
