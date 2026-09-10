@@ -9,10 +9,18 @@ import {
   fetchServiceMetrics
 } from '../src/services/metricsApi';
 
+import {
+  fetchHealthStatus
+} from '../src/services/healthApi';
+
 vi.mock('../src/services/metricsApi', () => ({
   fetchGlobalMetrics: vi.fn(),
   fetchEndpointMetrics: vi.fn(),
   fetchServiceMetrics: vi.fn()
+}));
+
+vi.mock('../src/services/healthApi', () => ({
+  fetchHealthStatus: vi.fn()
 }));
 
 const mockGlobalMetrics = {
@@ -63,6 +71,16 @@ const mockServiceMetrics = {
   endpoints: mockEndpointMetrics
 };
 
+const mockHealthServices = [
+  {
+    service: 'demo',
+    status: 'healthy',
+    statusCode: 200,
+    latency: 13.72,
+    lastChecked: '2026-09-10T14:12:28.451Z'
+  }
+];
+
 describe('API Sentinel Dashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -78,6 +96,10 @@ describe('API Sentinel Dashboard', () => {
     fetchServiceMetrics.mockResolvedValue(
       mockServiceMetrics
     );
+
+    fetchHealthStatus.mockResolvedValue(
+  mockHealthServices
+);
   });
 
   it('renders the dashboard with API metrics', async () => {
@@ -154,4 +176,30 @@ describe('API Sentinel Dashboard', () => {
       })
     ).toBeInTheDocument();
   });
+
+  it('renders service health status', async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(
+      screen.getByText('Service Health')
+    ).toBeInTheDocument();
+  });
+
+  expect(
+  screen.getAllByText('demo').length
+).toBeGreaterThanOrEqual(1);
+
+  expect(
+    screen.getByText('healthy')
+  ).toBeInTheDocument();
+
+  expect(
+    screen.getByText('200')
+  ).toBeInTheDocument();
+
+  expect(
+    screen.getByText('13.72 ms')
+  ).toBeInTheDocument();
+});
 });
