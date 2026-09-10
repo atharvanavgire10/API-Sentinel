@@ -10,6 +10,12 @@ const {
 
 const serviceRegistry = require('../src/services/serviceRegistry');
 
+const {
+  getOpenIncidents,
+  getIncidents,
+  clearIncidents
+} = require('../src/services/incidentService');
+
 describe('Health Monitor Service', () => {
   let testServer;
   let testPort;
@@ -47,8 +53,9 @@ describe('Health Monitor Service', () => {
   });
 
   beforeEach(() => {
-    clearHealthStatus();
-  });
+  clearHealthStatus();
+  clearIncidents();
+});
 
   afterAll(async () => {
     await new Promise((resolve) => {
@@ -129,4 +136,80 @@ describe('Health Monitor Service', () => {
       getHealthStatus()
     ).toHaveLength(0);
   });
+
+  it('creates an incident when a service is unhealthy', async () => {
+  const result = await checkService(
+    'offline-test',
+    {
+      name: 'offline-test',
+      baseUrl: 'http://127.0.0.1:59999',
+      timeoutMs: 500
+    }
+  );
+
+  expect(result.status).toBe('unhealthy');
+
+  const incidents = getOpenIncidents();
+
+  expect(incidents).toHaveLength(1);
+  expect(incidents[0].service).toBe(
+    'offline-test'
+  );
+  expect(incidents[0].type).toBe('health');
+  expect(incidents[0].status).toBe('open');
+});
+
+it('deduplicates repeated unhealthy health checks', async () => {
+  const service = {
+    name: 'offline-test',
+    baseUrl: 'http://127.0.0.1:59999',
+    timeoutMs: 500
+  };
+
+  await checkService(
+    'offline-test',
+    service
+  );
+
+  await checkService(
+    'offline-test',
+    service
+  );
+
+  const incidents = getIncidents();
+
+  expect(incidents).toHaveLength(1);
+  expect(incidents[0].occurrenceCount).toBe(2);
+});
+
+it('resolves an open incident when the service recovers', async () => {
+  const offlineService = {
+    name: 'recovery-test',
+    baseUrl: 'http://127.0.0.1:59999',
+    timeoutMs: 500
+  };
+
+  await checkService(
+    'recovery-test',
+    offlineService
+  );
+
+  expect(
+    getOpenIncidents()
+  ).toHaveLength(1);
+
+  await checkService(
+    'health-test',
+    serviceRegistry.get('health-test')
+  );
+
+  const incidents = getOpenIncidents();
+
+  expect(
+    incidents.find(
+      (incident) =>
+        incident.service === 'recovery-test'
+    )
+  ).toBeDefined();
+});
 });
