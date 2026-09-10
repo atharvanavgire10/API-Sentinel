@@ -3,11 +3,13 @@ const cors = require('cors');
 const routes = require('./routes');
 const notFoundHandler = require('./middleware/notFoundHandler');
 const errorHandler = require('./middleware/errorHandler');
+const securityHeaders = require('./middleware/securityHeaders');
 
 const app = express();
 
 // Core middleware
 app.use(cors());
+app.use(securityHeaders);
 app.use(express.json());
 
 // API routes
