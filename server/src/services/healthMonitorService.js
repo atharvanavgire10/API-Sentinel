@@ -3,6 +3,11 @@ const https = require('https');
 
 const serviceRegistry = require('./serviceRegistry');
 
+const {
+  createIncident,
+  resolveIncident
+} = require('./incidentService');
+
 const healthStatus = new Map();
 
 function checkService(serviceName, service) {
@@ -51,6 +56,27 @@ function checkService(serviceName, service) {
                 new Date().toISOString()
             });
 
+            const health = healthStatus.get(
+  serviceName
+);
+
+if (health.status === 'unhealthy') {
+  createIncident({
+    service: serviceName,
+    type: 'health',
+    status: 'unhealthy',
+    message:
+      `Service ${serviceName} returned HTTP ${response.statusCode}`,
+    statusCode: response.statusCode,
+    latency: health.latency
+  });
+} else {
+  resolveIncident(
+    serviceName,
+    'health'
+  );
+}
+
             resolve(
               healthStatus.get(serviceName)
             );
@@ -85,6 +111,17 @@ function checkService(serviceName, service) {
       error.message ||
       'Health check request failed'
   });
+
+  createIncident({
+  service: serviceName,
+  type: 'health',
+  status: 'unhealthy',
+  message:
+    healthStatus.get(serviceName).error ||
+    `Service ${serviceName} is unreachable`,
+  statusCode: null,
+  latency
+});
 
   resolve(
     healthStatus.get(serviceName)
