@@ -219,3 +219,34 @@ The demo backend provides the following endpoints for development and integratio
 - [ ] **Phase 5: Auth & Enterprise Management**
   - API Key issuance, quota tiers, and operator dashboard controls.
 
+## Phase 3 — Request Metrics
+
+API Sentinel now collects real metrics from requests passing through
+the reverse proxy.
+
+Tracked metrics include:
+
+- Total requests
+- Successful requests
+- Failed requests
+- 4xx responses
+- 5xx responses
+- Average latency
+- P50 latency
+- P95 latency
+- P99 latency
+- Endpoint-level metrics
+
+### Metrics API
+
+GET /api/metrics
+
+GET /api/metrics/endpoints
+
+GET /api/metrics/services/:service
+
+Metrics are currently stored in memory and reset when the Sentinel
+process restarts.
+
+Redis and persistent metric storage are intentionally deferred to
+later phases.
