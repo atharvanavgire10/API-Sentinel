@@ -1,252 +1,742 @@
-# API Sentinel
+# 🛡️ API Sentinel
 
-> **API Sentinel** is a production-inspired API reliability gateway and monitoring platform designed to provide traffic routing, latency monitoring, circuit breaking, rate limiting, and observability.
+> Production-inspired API reliability gateway and monitoring platform built with Node.js, Express, Redis, React, and Vite.
 
----
+API Sentinel is a lightweight reliability gateway that sits between clients and upstream APIs.
 
-> [!NOTE]
-> **Phase 1 Implementation Notice**:
-> This repository is currently in **Phase 1 (Foundation)**. Advanced reliability features—including reverse proxying, Redis caching/rate limiting, MongoDB metrics storage, active circuit breakers, incident alerts, and authentication—are planned for subsequent phases and are **not yet implemented** in this release.
+Instead of simply forwarding requests, it provides a centralized layer for:
 
----
+- 🔀 Reverse proxying
+- 📊 Real-time API observability
+- 🚦 Distributed rate limiting
+- ❤️ Service health monitoring
+- 🚨 Incident detection and deduplication
+- 🔐 Security hardening
+- ⚡ Performance testing
+- 📈 Real-time reliability dashboards
 
-## Architecture Overview
-
-API Sentinel uses a three-tier decoupled architecture:
-
-```
-[ Client (React + Vite Dashboard) ]
-                |
-                v
-[ API Sentinel Gateway (Node.js + Express) ]
-                |
-                v (Planned Phase 2+)
-[ Demo Backend Service (Upstream Mock Service) ]
-```
-
-| Component | Technology | Default Port | Description |
-|-----------|------------|--------------|-------------|
-| **Server** (`server/`) | Node.js, Express | `5000` | Gateway foundation, health check, 404 & error handlers, graceful shutdown |
-| **Demo Backend** (`demo-backend/`) | Node.js, Express | `5001` | Upstream target service with sample datasets & test endpoints |
-| **Client** (`client/`) | React 18, Vite | `5173` | Operator dashboard displaying gateway connection status and metric shells |
-
-Detailed architectural diagrams and component descriptions can be found in [docs/architecture.md](docs/architecture.md).
+The project was designed to explore how production API gateways handle traffic, failures, latency, observability, and distributed state.
 
 ---
 
-## Current Phase 1 Scope
+## 🌐 Live Demo
 
-- **API Sentinel Server**:
-  - Express server scaffold with modular architecture (`config/`, `controllers/`, `middleware/`, `models/`, `routes/`, `services/`).
-  - `GET /api/health` returning operational status JSON.
-  - Centralized JSON error handler and 404 handler.
-  - Graceful shutdown signal handling for `SIGINT` and `SIGTERM`.
-  - Zero placeholder business logic.
-- **Demo Backend**:
-  - Standalone Express service representing an upstream target.
-  - `GET /health` service health check.
-  - Static demo resources: `GET /api/products`, `GET /api/orders`, `GET /api/users`.
-  - Development & testing simulation endpoints:
-    - `GET /api/slow`: Artificially delayed (~1000ms) endpoint for latency testing.
-    - `GET /api/error`: Predictable HTTP 500 error for failure handling verification.
-- **API Sentinel Dashboard**:
-  - Clean React + Vite interface with accessible branding and styling.
-  - Dynamic backend connection indicator querying `GET /api/health`:
-    - `Backend: ● Connected`
-    - `Backend: ● Unavailable`
-  - Recheck button and timestamp display.
-  - Extensible dashboard metric shells outlining future observability metrics.
-- **Automated Testing**:
-  - Jest + Supertest suites for backend and demo backend.
-  - Vitest + Testing Library suite for frontend rendering and mock resolution.
+| Component | URL |
+|---|---|
+| 📊 Dashboard | https://api-sentinel-beta.vercel.app/ |
+| 🛡️ API Sentinel | https://api-sentinel-gqzi.onrender.com/ |
+| 🧪 Demo Backend | https://api-sentinel-demo-backend.onrender.com/ |
+
+> **Note:** The current backend uses Render's free tier, which may spin down after inactivity. This is a hosting-tier limitation and does not affect the gateway's functionality.
 
 ---
 
-## Prerequisites
+# 🏗️ Architecture
 
-- **Node.js**: v18.0.0 or higher (v20+ recommended)
-- **npm**: v9.0.0 or higher
-- **OS**: Windows, macOS, or Linux
+```text
+                         ┌─────────────────────────┐
+                         │      React Dashboard     │
+                         │          Vercel         │
+                         └────────────┬────────────┘
+                                      │
+                                      │ Metrics / Health
+                                      ▼
+┌───────────────┐           ┌─────────────────────────┐
+│    Client     │ ────────► │      API Sentinel       │
+└───────────────┘           │         Express         │
+                            │                         │
+                            │  Security Headers       │
+                            │  CORS                   │
+                            │  Rate Limiting          │
+                            │  Request IDs            │
+                            │  Reverse Proxy          │
+                            │  Metrics                │
+                            │  Health Monitoring      │
+                            │  Incident Detection     │
+                            └────────────┬────────────┘
+                                         │
+                           ┌─────────────┴─────────────┐
+                           │                           │
+                           ▼                           ▼
+                  ┌──────────────────┐       ┌──────────────────┐
+                  │   Upstash Redis  │       │  Demo Backend    │
+                  │ Distributed State│       │     Express      │
+                  └──────────────────┘       └──────────────────┘
+🚀 Core Features
+1. Reverse Proxy Gateway
 
----
+API Sentinel forwards requests to registered upstream services.
 
-## Local Setup & Installation
+Example:
 
-Install dependencies across all three workspaces:
+GET /api/proxy/demo/api/products
 
-```bash
-# 1. Install API Sentinel backend dependencies
-cd server
-npm install
-cd ..
+is forwarded to:
 
-# 2. Install Demo backend dependencies
-cd demo-backend
-npm install
-cd ..
+https://<demo-backend>/api/products
 
-# 3. Install Frontend dashboard dependencies
-cd client
-npm install
-cd ..
-```
+The gateway preserves:
 
----
+HTTP methods
+Query parameters
+Request bodies
+Upstream status codes
+Relevant request headers
 
-## Environment Variables
+It also generates or preserves:
 
-Copy the `.env.example` file in each directory to `.env` if custom configuration is desired:
+X-Request-ID
+Gateway failure handling
+Scenario	Response
+Unknown service	404
+Upstream unavailable	502
+Upstream timeout	504
+Upstream 4xx	Forwarded
+Upstream 5xx	Forwarded
 
-### Server (`server/.env.example`)
-```env
-# Port on which API Sentinel server listens
-PORT=5000
+Upstream response bodies are streamed where possible to avoid unnecessary response buffering.
 
-# Environment mode
-NODE_ENV=development
+📊 2. Real-Time API Observability
 
-# Allowed client origin for CORS
-CLIENT_URL=http://localhost:5173
-```
+API Sentinel records metrics directly from gateway traffic.
 
-### Demo Backend (`demo-backend/.env.example`)
-```env
-# Port on which Demo backend listens
-PORT=5001
+Global Metrics
+Total requests
+Successful requests
+Failed requests
+Client errors
+Server errors
+Average latency
+P50 latency
+P95 latency
+P99 latency
+Endpoint Metrics
 
-# Environment mode
-NODE_ENV=development
-```
+Endpoints are aggregated using:
 
-### Client (`client/.env.example`)
-```env
-# API Gateway URL (without trailing slash)
-VITE_API_URL=http://localhost:5000/api
-```
+service + HTTP method + normalized path
 
----
+Query parameters are excluded from endpoint aggregation.
 
-## Running Each Service
+For example:
 
-Each service can be run independently using its respective npm scripts:
+/api/products?page=1
+/api/products?page=2
 
-### Running the API Sentinel Server
-```bash
-cd server
-npm run dev
-```
-*Runs on `http://localhost:5000` with hot-reload via nodemon.*
+are both recorded as:
 
-### Running the Demo Backend
-```bash
-cd demo-backend
-npm run dev
-```
-*Runs on `http://localhost:5001` with hot-reload via nodemon.*
-
-### Running the Frontend Dashboard
-```bash
-cd client
-npm run dev
-```
-*Runs on `http://localhost:5173` via Vite.*
-
-### Convenience Root Scripts
-From the root workspace directory:
-```bash
-# Start individual services from root
-npm run dev:server
-npm run dev:demo
-npm run dev:client
-```
-
----
-
-## Testing
-
-Run tests across each individual service or use the root orchestration script:
-
-### Run All Test Suites
-```bash
-npm test
-```
-
-### Run Service Test Suites Individually
-```bash
-# API Sentinel Backend Tests (Jest + Supertest)
-npm --prefix server test
-
-# Demo Backend Tests (Jest + Supertest)
-npm --prefix demo-backend test
-
-# Frontend Dashboard Tests (Vitest + Testing Library)
-npm --prefix client test
-```
-
-### Production Build Verification
-```bash
-npm --prefix client run build
-```
-
----
-
-## Upstream Demo Endpoints Reference
-
-The demo backend provides the following endpoints for development and integration:
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Service health status (`{"status":"ok","service":"demo-backend"}`) |
-| `GET` | `/api/products` | Static sample product inventory |
-| `GET` | `/api/orders` | Static sample customer orders |
-| `GET` | `/api/users` | Static sample users list |
-| `GET` | `/api/slow` | **Development/Testing Only**: Waits ~1000ms then returns HTTP 200 |
-| `GET` | `/api/error` | **Development/Testing Only**: Returns HTTP 500 simulated internal failure |
-
----
-
-## Planned Future Phases
-
-- [ ] **Phase 2: Reverse Proxy & Request Interception**
-  - Dynamic reverse proxying from API Sentinel to upstream services.
-  - End-to-end request/response timing and latency capture.
-- [ ] **Phase 3: Rate Limiting & Circuit Breaking**
-  - Redis token-bucket rate limiting per API key and client IP.
-  - Circuit breaker states (Closed, Open, Half-Open) for failing upstreams.
-- [ ] **Phase 4: Persistent Observability & Incident Detection**
-  - MongoDB timeseries metrics persistence.
-  - SLA breach detection, alerting thresholds, and incident log.
-- [ ] **Phase 5: Auth & Enterprise Management**
-  - API Key issuance, quota tiers, and operator dashboard controls.
-
-## Phase 3 — Request Metrics
-
-API Sentinel now collects real metrics from requests passing through
-the reverse proxy.
-
-Tracked metrics include:
-
-- Total requests
-- Successful requests
-- Failed requests
-- 4xx responses
-- 5xx responses
-- Average latency
-- P50 latency
-- P95 latency
-- P99 latency
-- Endpoint-level metrics
-
-### Metrics API
-
+/api/products
+Metrics API
 GET /api/metrics
-
 GET /api/metrics/endpoints
-
 GET /api/metrics/services/:service
+🚦 3. Redis-Backed Distributed Rate Limiting
 
-Metrics are currently stored in memory and reset when the Sentinel
-process restarts.
+API Sentinel uses Redis to maintain shared rate-limit state.
 
-Redis and persistent metric storage are intentionally deferred to
-later phases.
+Default configuration:
+
+Window:       60 seconds
+Maximum:      100 requests/client/window
+Storage:      Redis
+
+Responses include:
+
+X-RateLimit-Limit
+X-RateLimit-Remaining
+X-RateLimit-Reset
+Retry-After
+
+When the limit is exceeded:
+
+429 Too Many Requests
+
+Example response:
+
+{
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded. Please try again later.",
+  "retryAfter": 42
+}
+Fail-Open Behavior
+
+If Redis becomes unavailable, the gateway allows requests to continue instead of taking the entire API gateway offline.
+
+This is an intentional reliability trade-off:
+
+Redis failure
+     ↓
+Rate limiter unavailable
+     ↓
+Allow request
+     ↓
+Gateway remains available
+❤️ 4. Service Health Monitoring
+
+API Sentinel periodically checks registered upstream services.
+
+Default health-check interval:
+
+30 seconds
+
+The demo backend exposes:
+
+GET /health
+
+Health APIs:
+
+GET /api/health
+GET /api/health/services
+GET /api/health/services/check
+GET /api/health/services/:service
+
+Health information includes:
+
+Service status
+HTTP status code
+Response latency
+Last checked timestamp
+Error information when unavailable
+🚨 5. Incident Detection
+
+Health failures automatically create incidents.
+
+The incident system supports:
+
+Open/resolved states
+Severity
+Start time
+Resolution time
+Status code
+Latency
+Occurrence count
+Duplicate suppression
+Incident Lifecycle
+Healthy
+   │
+   │ health check fails
+   ▼
+Incident Created
+   │
+   │ repeated failures
+   ▼
+Occurrence Count Updated
+   │
+   │ service recovers
+   ▼
+Incident Resolved
+Incident Deduplication
+
+Repeated failures for the same:
+
+service + incident type
+
+do not create hundreds of separate incidents.
+
+Instead, the existing open incident is updated:
+
+occurrenceCount++
+Incident APIs
+GET /api/incidents
+GET /api/incidents/open
+GET /api/incidents/:id
+🔐 6. Security Hardening
+
+API Sentinel includes production-oriented security controls.
+
+Security Headers
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: no-referrer
+Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
+CORS
+
+Only the configured frontend origin is permitted.
+
+CLIENT_URL
+
+is used to control the allowed browser origin.
+
+HTTP Method Protection
+
+Supported methods:
+
+GET
+POST
+PUT
+PATCH
+DELETE
+
+Unsupported methods return:
+
+405 Method Not Allowed
+
+with an appropriate:
+
+Allow
+
+header.
+
+Request Body Protection
+
+JSON request bodies are limited to:
+
+1 MB
+Upstream URL Validation
+
+Registered services must use valid:
+
+http://
+https://
+
+URLs.
+
+Unsupported URL schemes are rejected.
+
+Redirect Handling
+
+The proxy uses manual redirect handling:
+
+redirect: "manual"
+
+to avoid blindly following upstream redirects.
+
+🧪 7. Failure Simulation
+
+The demo backend provides controlled failure scenarios for testing reliability behavior.
+
+Internal Server Error
+GET /api/failure/500
+
+Returns:
+
+500 Internal Server Error
+Not Found
+GET /api/failure/404
+
+Returns:
+
+404 Not Found
+Slow Upstream
+GET /api/failure/slow?delay=6000
+
+The default gateway timeout is:
+
+5000 ms
+
+Therefore a 6-second upstream request produces:
+
+504 Gateway Timeout
+
+This allows the reliability pipeline to be tested end-to-end:
+
+Failure
+  ↓
+Gateway
+  ↓
+HTTP error
+  ↓
+Metrics
+  ↓
+Dashboard
+📈 8. Real-Time Reliability Dashboard
+
+The React dashboard provides visibility into the gateway.
+
+Dashboard KPIs
+Total requests
+Success rate
+Error rate
+Average latency
+P95 latency
+P99 latency
+Open incidents
+Service Health
+
+Displays:
+
+Service name
+Current health status
+Status code
+Health-check latency
+Last checked time
+Endpoint Performance
+
+Displays:
+
+HTTP method
+Endpoint
+Request count
+Successful requests
+Errors
+Average latency
+P95 latency
+P99 latency
+Additional Views
+Request volume
+Service performance
+Latency distribution
+Incident history
+
+The dashboard automatically refreshes every:
+
+10 seconds
+⚡ 9. Performance Testing
+
+API Sentinel includes a configurable load-testing script.
+
+node scripts/load-test.js
+
+The script measures:
+
+Throughput
+Total requests
+Concurrency
+Average latency
+P50
+P95
+P99
+Status-code distribution
+Success rate
+Benchmark
+
+A sustained local benchmark was performed with:
+
+Requests:       5,000
+Concurrency:    50
+
+Results:
+
+Throughput:     ~1,220 requests/sec
+Success:        5,000 / 5,000
+Success Rate:   100%
+Average:        ~39.97 ms
+P50:            ~35.14 ms
+P95:            ~58.11 ms
+P99:            ~88.25 ms
+
+For comparison, direct requests to the demo backend achieved approximately:
+
+Throughput:     ~2,974 requests/sec
+Average:        ~15.96 ms
+P50:            ~12.71 ms
+P95:            ~28.88 ms
+P99:            ~75.78 ms
+
+These results are environment-dependent and should be interpreted as engineering benchmarks rather than universal capacity guarantees.
+
+🛠️ Tech Stack
+Backend
+Node.js
+Express
+Redis
+node-redis
+Jest
+Supertest
+Frontend
+React
+Vite
+Recharts
+Vitest
+Testing Library
+Infrastructure
+GitHub
+Render
+Vercel
+Upstash Redis
+📁 Project Structure
+api-sentinel/
+│
+├── server/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── controllers/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   └── server.js
+│   │
+│   ├── scripts/
+│   │   └── load-test.js
+│   │
+│   ├── tests/
+│   ├── .env.example
+│   └── package.json
+│
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   └── ...
+│   │
+│   ├── tests/
+│   ├── .env.example
+│   └── package.json
+│
+├── demo-backend/
+│   ├── src/
+│   ├── tests/
+│   └── package.json
+│
+├── docs/
+├── .gitignore
+├── package.json
+└── README.md
+💻 Local Development
+Prerequisites
+
+Install:
+
+Node.js 20+
+Redis 7+
+Git
+Clone the Repository
+git clone https://github.com/atharvanavgire10/API-Sentinel.git
+cd API-Sentinel
+Install Dependencies
+API Sentinel
+cd server
+npm install
+Demo Backend
+cd ../demo-backend
+npm install
+Dashboard
+cd ../client
+npm install
+⚙️ Environment Variables
+API Sentinel
+
+Create:
+
+server/.env
+
+using:
+
+server/.env.example
+
+Example:
+
+PORT=5000
+NODE_ENV=development
+CLIENT_URL=http://localhost:5173
+
+DEMO_BACKEND_URL=http://localhost:5001
+
+PROXY_TIMEOUT_MS=5000
+
+REDIS_URL=redis://localhost:6379
+
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=100
+
+HEALTH_CHECK_INTERVAL_MS=30000
+Dashboard
+
+Create:
+
+client/.env
+
+Example:
+
+VITE_API_BASE_URL=http://localhost:5000
+
+Never commit real secrets or production credentials to Git.
+
+▶️ Running Locally
+Start Demo Backend
+cd demo-backend
+npm start
+
+Runs on:
+
+http://localhost:5001
+Start API Sentinel
+cd server
+npm start
+
+Runs on:
+
+http://localhost:5000
+Start Dashboard
+cd client
+npm run dev
+
+Runs on:
+
+http://localhost:5173
+🔌 API Examples
+Proxy
+curl http://localhost:5000/api/proxy/demo/api/products
+Gateway Health
+curl http://localhost:5000/api/health
+Global Metrics
+curl http://localhost:5000/api/metrics
+Endpoint Metrics
+curl http://localhost:5000/api/metrics/endpoints
+Service Health
+curl http://localhost:5000/api/health/services
+Incidents
+curl http://localhost:5000/api/incidents
+🧪 Testing
+Backend Tests
+cd server
+npm test
+
+Backend tests cover:
+
+Reverse proxy behavior
+Request forwarding
+Error handling
+Timeouts
+Metrics
+Rate limiting
+Health monitoring
+Incident detection
+Security headers
+HTTP method validation
+Frontend Tests
+cd client
+npm test
+
+Frontend tests cover dashboard behavior and API-driven rendering.
+
+Production Build
+cd client
+npm run build
+🧠 Reliability Engineering Decisions
+
+API Sentinel intentionally models several real-world reliability trade-offs.
+
+Fail-Open Rate Limiting
+
+Redis is an external dependency.
+
+If Redis fails, blocking every API request could create a larger outage than the original Redis failure.
+
+Therefore:
+
+Redis unavailable
+       ↓
+Rate limiter fails
+       ↓
+Request allowed
+       ↓
+Gateway stays available
+Gateway Timeout
+
+An upstream service should not be allowed to hold gateway resources indefinitely.
+
+The configurable timeout:
+
+PROXY_TIMEOUT_MS=5000
+
+limits how long the gateway waits.
+
+Percentile Latency
+
+Average latency alone can hide tail latency.
+
+API Sentinel therefore tracks:
+
+P50
+P95
+P99
+
+to expose slow requests and tail behavior.
+
+Incident Deduplication
+
+A single failing service can generate many health-check failures.
+
+Instead of creating one incident per failure:
+
+Failure
+Failure
+Failure
+Failure
+
+API Sentinel maintains one open incident and increments:
+
+occurrenceCount
+
+until recovery.
+
+🚀 Deployment
+
+Current deployment:
+
+Frontend
+   ↓
+Vercel
+
+API Sentinel
+   ↓
+Render
+
+Demo Backend
+   ↓
+Render
+
+Distributed Rate Limit State
+   ↓
+Upstash Redis
+
+Production environment variables are configured through the hosting providers rather than committed to the repository.
+
+🔭 Future Improvements
+
+Potential future enhancements include:
+
+Persistent metrics storage
+MongoDB-backed historical analytics
+Atomic Redis rate-limit operations using Lua/MULTI
+Sliding-window or token-bucket rate limiting
+Authentication and API keys
+Role-based dashboard access
+Alert notifications
+Prometheus/OpenTelemetry integration
+Multi-service registration API
+Distributed health-monitoring coordination
+Advanced traffic shaping
+Historical latency charts
+Horizontal gateway deployment
+Kubernetes deployment
+🎯 Engineering Goals
+
+API Sentinel was built to explore practical backend engineering concepts beyond basic CRUD APIs:
+
+HTTP Networking
+      ↓
+Reverse Proxying
+      ↓
+Failure Handling
+      ↓
+Observability
+      ↓
+Distributed State
+      ↓
+Health Monitoring
+      ↓
+Incident Management
+      ↓
+Security
+      ↓
+Load Testing
+      ↓
+Production Deployment
+
+The focus is on understanding how backend systems behave under:
+
+Failure
+Latency
+Traffic
+Distributed execution
+Dependency outages
+👨‍💻 Author
+
+Atharva Navgire
+
+GitHub:
+https://github.com/atharvanavgire10
