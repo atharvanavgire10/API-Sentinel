@@ -9,6 +9,11 @@ const securityHeaders = require('./middleware/securityHeaders');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
+const allowedOrigin =
+  process.env.CLIENT_URL || 'http://localhost:5173';
+
 const METHODS_WITH_BODY = new Set([
   'POST',
   'PUT',
@@ -17,7 +22,17 @@ const METHODS_WITH_BODY = new Set([
 ]);
 
 // Core middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || origin === allowedOrigin) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Not allowed by CORS'));
+    }
+  })
+);
 app.use(securityHeaders);
 
 // Parse JSON only for HTTP methods that can carry request bodies
