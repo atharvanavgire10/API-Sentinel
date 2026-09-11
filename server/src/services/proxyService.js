@@ -54,7 +54,8 @@ class ProxyService {
     }
 
     // 2. Resolve or generate Request ID
-    const requestId = req.headers['x-request-id'] || randomUUID();
+    const requestId =
+      req.headers['x-request-id'] || randomUUID();
 
     res.setHeader('X-Request-ID', requestId);
 
@@ -89,7 +90,8 @@ class ProxyService {
     const fetchOptions = {
       method: req.method,
       headers: forwardHeaders,
-      signal: controller.signal
+      signal: controller.signal,
+      redirect: 'manual'
     };
 
     // 5. Attach body for applicable HTTP methods

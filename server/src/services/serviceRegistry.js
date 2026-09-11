@@ -21,15 +21,38 @@ class ServiceRegistry {
     if (!name || typeof name !== 'string') {
       throw new Error('Service name must be a non-empty string');
     }
+
     if (!serviceConfig || !serviceConfig.baseUrl) {
-      throw new Error('Service configuration must contain a valid baseUrl');
+      throw new Error(
+        'Service configuration must contain a valid baseUrl'
+      );
+    }
+
+    let parsedBaseUrl;
+
+    try {
+      parsedBaseUrl = new URL(serviceConfig.baseUrl);
+    } catch {
+      throw new Error(
+        'Service baseUrl must be a valid URL'
+      );
+    }
+
+    if (!['http:', 'https:'].includes(parsedBaseUrl.protocol)) {
+      throw new Error(
+        'Service baseUrl must use HTTP or HTTPS'
+      );
     }
 
     const normalizedName = name.toLowerCase().trim();
+
     this.services.set(normalizedName, {
       name: normalizedName,
-      baseUrl: serviceConfig.baseUrl.replace(/\/+$/, ''), // strip trailing slash
-      timeoutMs: serviceConfig.timeoutMs || config.proxyTimeoutMs || 5000
+      baseUrl: serviceConfig.baseUrl.replace(/\/+$/, ''),
+      timeoutMs:
+        serviceConfig.timeoutMs ||
+        config.proxyTimeoutMs ||
+        5000
     });
   }
 
@@ -39,8 +62,14 @@ class ServiceRegistry {
    * @returns {Object|null}
    */
   get(name) {
-    if (!name || typeof name !== 'string') return null;
-    return this.services.get(name.toLowerCase().trim()) || null;
+    if (!name || typeof name !== 'string') {
+      return null;
+    }
+
+    return (
+      this.services.get(name.toLowerCase().trim()) ||
+      null
+    );
   }
 
   /**
@@ -49,8 +78,13 @@ class ServiceRegistry {
    * @returns {boolean}
    */
   has(name) {
-    if (!name || typeof name !== 'string') return false;
-    return this.services.has(name.toLowerCase().trim());
+    if (!name || typeof name !== 'string') {
+      return false;
+    }
+
+    return this.services.has(
+      name.toLowerCase().trim()
+    );
   }
 
   /**
@@ -66,4 +100,3 @@ class ServiceRegistry {
 const serviceRegistry = new ServiceRegistry();
 
 module.exports = serviceRegistry;
-
